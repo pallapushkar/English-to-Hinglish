@@ -1,0 +1,80 @@
+# Import the required libraries
+import requests
+import json
+
+# Define the API key and endpoint for Microsoft Translator
+api_key = "YOUR_API_KEY"
+endpoint = "https://api.cognitive.microsofttranslator.com"
+
+# Define the function to translate text from English to Hinglish
+def translate_to_hinglish(text):
+  # Set the parameters for the translation request
+  params = {
+    "api-version": "3.0",
+    "from": "en",
+    "to": ["hi", "en"],
+    "profanityAction": "Marked",
+    "textType": "plain"
+  }
+
+  # Set the headers for the translation request
+  headers = {
+    "Ocp-Apim-Subscription-Key": api_key,
+    "Ocp-Apim-Subscription-Region": "YOUR_REGION",
+    "Content-type": "application/json"
+  }
+
+  # Construct the body for the translation request
+  body = [{
+    "text": text
+  }]
+
+  # Send the request and get the response
+  response = requests.post(endpoint + "/translate", params=params, headers=headers, json=body)
+  result = response.json()
+
+  # Extract the translated texts from the response
+  hi_text = result[0]["translations"][0]["text"] # Hindi text
+  en_text = result[0]["translations"][1]["text"] # English text
+
+  # Replace the marked profanity words in Hindi with English words
+  hi_text = hi_text.replace("<profanity>", "").replace("</profanity>", "")
+
+  # Split the texts into words and punctuation marks
+  hi_words = hi_text.split()
+  en_words = en_text.split()
+
+  # Initialize an empty list to store the Hinglish words
+  hinglish_words = []
+
+  # Loop through the words and punctuation marks in both texts
+  for i in range(len(hi_words)):
+    # If the word is a punctuation mark, append it to the list
+    if hi_words[i] in [".", ",", "?", "!"]:
+      hinglish_words.append(hi_words[i])
+    else:
+      # If the word is a common word in Hindi, append it to the list
+      if hi_words[i] in ["और", "का", "के", "की", "को", "से", "में", "है", "हैं", "था", "थे", "नहीं", "या", "क्या"]:
+        hinglish_words.append(hi_words[i])
+      else:
+        # If the word is not a common word in Hindi, check its length and similarity with the corresponding English word
+        hi_len = len(hi_words[i]) # Length of the Hindi word
+        en_len = len(en_words[i]) # Length of the English word
+        sim = sum([hi_words[i][j] == en_words[i][j] for j in range(min(hi_len, en_len))]) / max(hi_len, en_len) # Similarity score between 0 and 1
+
+        # If the word is too long or too dissimilar, append the English word to the list
+        if hi_len > 5 or sim < 0.5:
+          hinglish_words.append(en_words[i])
+        else:
+          # Otherwise, append the Hindi word to the list
+          hinglish_words.append(hi_words[i])
+
+  # Join the Hinglish words and punctuation marks into a single text
+  hinglish_text = "".join([word + " " if word not in [".", ",", "?", "!"] else word for word in hinglish_words]).strip()
+
+  # Return the Hinglish text as output
+  return hinglish_text
+# Test the function with some examples
+print(translate_to_hinglish("Definitely share your feedback in the comment section."))
+print(translate_to_hinglish("So even if it's a big video, I will clearly mention all the products."))
+print(translate_to_hinglish("I was waiting for my bag."))
